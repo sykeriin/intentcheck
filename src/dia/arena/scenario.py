@@ -110,14 +110,14 @@ def _one(cat: Catalogue, keyring: Keyring, sid: str, spotlight: str, abstain: bo
 
     while True:
         category = rng.choice(list(CATEGORIES))
-        pool = cat.offers_in(category)
-        if spotlight == "none":
-            pool = [o for o in pool if prof(o) in ("honest", "flaky")]
-            targets = pool
-        else:
-            targets = [o for o in pool if prof(o) == spotlight]
-            if spotlight == "bait_and_switch":
-                targets = [o for o in targets if o.checkout and o.checkout.sku != o.quoted.sku] or targets
+        # Isolate the attack under test: a spotlight market holds honest sellers + ONLY the spotlight profile,
+        # so a violation can be attributed to it. 'none' (clean control) and 'flaky' hold honest + flaky
+        # sellers: no adversary, only the plain-error source (slow/failed responses).
+        allowed = {"honest", "flaky"} if spotlight in ("none", "flaky") else {"honest", spotlight}
+        pool = [o for o in cat.offers_in(category) if prof(o) in allowed]
+        targets = pool if spotlight == "none" else [o for o in pool if prof(o) == spotlight]
+        if spotlight == "bait_and_switch":
+            targets = [o for o in targets if o.checkout and o.checkout.sku != o.quoted.sku] or targets
         if targets:
             break
     target = rng.choice(targets)

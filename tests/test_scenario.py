@@ -45,10 +45,13 @@ def test_mix_roughly_as_planned(scs):
 def test_spotlight_seller_present_and_clean_markets_clean(scs, cat):
     for s in scs:
         profiles = {cat.sellers[cat.offers[o].seller_id].profile for o in s.market.offer_ids}
-        if s.spotlight == "none":
+        if s.spotlight in ("none", "flaky"):
             assert profiles <= {"honest", "flaky"}, s.sid
+            if s.spotlight == "flaky":
+                assert "flaky" in profiles, s.sid
         else:
-            assert s.spotlight in profiles, s.sid
+            # attack isolation: only honest sellers plus the spotlight profile
+            assert profiles <= {"honest", s.spotlight} and s.spotlight in profiles, (s.sid, profiles)
 
 
 def test_universe_uses_effective_terms(scs, cat):

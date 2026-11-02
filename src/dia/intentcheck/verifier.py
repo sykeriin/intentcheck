@@ -215,7 +215,8 @@ class IntentCheck:
             expl = "This purchase matches what you asked for."
         else:
             lead = "Blocked" if decision == BLOCK else "Please confirm"
-            expl = f"{lead}: " + " ".join(w if w.endswith(".") else w + "." for w in why[:2])
+            sent = [(w[0].upper() + w[1:]) if w else w for w in why[:2]]
+            expl = f"{lead}: " + " ".join(s if s.endswith(".") else s + "." for s in sent)
         audit = {
             "config": self.cfg.name,
             "mandate_hash": sha256_hex(mandate.model_dump(mode="json", exclude={"intent_expiry"})),
