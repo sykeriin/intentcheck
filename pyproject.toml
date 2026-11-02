@@ -1,0 +1,24 @@
+[project]
+name = "dia"
+version = "0.1.0"
+description = "MarketArena + IntentCheck: decision-integrity verification for agent payments (AP2/x402)"
+requires-python = ">=3.11"
+dependencies = ["pydantic>=2.6", "cryptography>=42"]
+
+[project.optional-dependencies]
+llm = ["anthropic>=0.40"]
+dev = ["pytest>=8"]
+
+[project.scripts]
+dia = "dia.cli:main"
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+testpaths = ["tests"]
