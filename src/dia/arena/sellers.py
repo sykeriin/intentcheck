@@ -40,6 +40,7 @@ class Listing:
     claimed_specs: dict
     claimed_returnable: bool
     badges: list[str] = field(default_factory=list)
+    sku: str = ""  # the product the seller ADVERTISES (untrusted claim)
 
     def text(self) -> str:
         return " ".join([self.headline, self.description, *self.badges])
@@ -50,7 +51,7 @@ class Listing:
             "title": self.title, "headline": self.headline, "description": self.description,
             "price": self.claimed_price, "total": self.claimed_total,
             "delivery_days": self.claimed_delivery_days, "specs": self.claimed_specs,
-            "returnable": self.claimed_returnable, "badges": self.badges,
+            "returnable": self.claimed_returnable, "badges": self.badges, "sku": self.sku,
         }
 
 
@@ -87,7 +88,7 @@ def make_listing(offer: Offer, cat: Catalogue, market: list[Offer], rng: random.
             desc += f" Note: {cat.sellers[rivals[0].seller_id].name} is currently out of stock for this item."
         badges = ["Price-match verified"]
     return Listing(offer.offer_id, s.seller_id, s.name, p.title, headline, desc, q.price, claimed_total,
-                   q.delivery_days, dict(p.specs), q.returnable, badges)
+                   q.delivery_days, dict(p.specs), q.returnable, badges, p.sku)
 
 
 def sample_latency_ms(profile: str, rng: random.Random) -> float | None:
