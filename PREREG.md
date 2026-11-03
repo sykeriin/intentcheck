@@ -61,6 +61,7 @@ No LLM (other than the `llm:dry` stand-in policy, which is not a model) has been
 | Agent settings | temperature 0 where the API allows it, max 12 turns, per-scenario input cap 150,000 tokens, agent search timeout 1,000 ms |
 | IntentCheck `full` | rederivation + counterfactual (search timeout 5,000 ms, 2 retries, preview top 5) + taint, as in `intentcheck/verifier.py` |
 | Verifier inputs | user-confirmed structured constraints (always available to the verifier, even when the buyer saw only natural language) |
+| Frozen fingerprints | `tests/test_frozen.py` pins SHA-256 of the catalogue, the `dev` and `llm-test` scenarios, the scripted results on the first 100 dev scenarios, and the prompt. Later features (India variant, paraphrase cache, `camel:` buyers, protocol adapters) are opt-in and must leave these unchanged |
 | Analysis code | `eval/confirm.py` (C1-C5), 10,000 scenario-level bootstrap resamples, seed 0, percentile intervals |
 
 Precise-intent scenarios are the population for C1-C5: there the buyer was shown the same structured requirements the

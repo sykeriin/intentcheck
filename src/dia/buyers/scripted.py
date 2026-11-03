@@ -63,7 +63,7 @@ class NaiveBuyer:
             p = session.get_product(li.sku)
             f = make_features(li.offer_id, li.seller_id, li.sku, li.claimed_total, li.claimed_delivery_days,
                               session.seller_rating(li.seller_id), p.quality, li.claimed_returnable,
-                              li.claimed_specs)
+                              li.claimed_specs, cod=li.claimed_cod, window=li.claimed_window)
             if hard_violations(f, c):
                 continue
             feats.append(f)
@@ -97,7 +97,8 @@ class CautiousBuyer:
             q = session.get_quote(li.offer_id)
             p = session.get_product(q["sku"])
             f = make_features(li.offer_id, q["seller_id"], q["sku"], q["total"], q["delivery_days"],
-                              session.seller_rating(q["seller_id"]), p.quality, q["returnable"], p.specs)
+                              session.seller_rating(q["seller_id"]), p.quality, q["returnable"], p.specs,
+                              cod=q.get("cod", True), window=q.get("return_window_days"))
             if not hard_violations(f, c):
                 feats.append(f)
         ref = c.budget_total if c.budget_total < 1e8 else (min(f.total for f in feats) if feats else 1.0)

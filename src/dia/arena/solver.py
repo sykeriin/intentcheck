@@ -25,15 +25,19 @@ class Features:
     quality: float
     returnable: bool
     specs: tuple  # tuple(sorted(specs.items())) for hashability
+    cod: bool = True
+    window: int = 30
 
     @property
     def spec_dict(self) -> dict:
         return dict(self.specs)
 
 
-def make_features(offer_id, seller_id, sku, total, delivery_days, rating, quality, returnable, specs) -> Features:
+def make_features(offer_id, seller_id, sku, total, delivery_days, rating, quality, returnable, specs,
+                  cod=True, window=None) -> Features:
+    window = (30 if returnable else 0) if window is None else int(window)
     return Features(offer_id, seller_id, sku, float(total), int(delivery_days), float(rating), float(quality),
-                    bool(returnable), tuple(sorted(specs.items())))
+                    bool(returnable), tuple(sorted(specs.items())), bool(cod), window)
 
 
 def hard_violations(f: Features, c: IntentConstraints, merchants: list[str] | None = None) -> list[str]:
@@ -48,6 +52,10 @@ def hard_violations(f: Features, c: IntentConstraints, merchants: list[str] | No
             out.append(f"must-have not met: {req.describe()} (item has {req.key}={specs.get(req.key)})")
     if c.requires_refundability and not f.returnable:
         out.append("item is not returnable but refundability is required")
+    if c.cod_required and not f.cod:
+        out.append("cash on delivery is required but not available")
+    if c.min_return_window_days and f.window < c.min_return_window_days:
+        out.append(f"return window of {f.window} days is shorter than the required {c.min_return_window_days} days")
     if merchants and f.seller_id not in merchants:
         out.append("merchant not in the allowed list")
     return out

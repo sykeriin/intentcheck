@@ -82,10 +82,18 @@ class Terms:
     shipping: float
     delivery_days: int
     returnable: bool
+    cod: bool = True                          # cash on delivery available (India variant)
+    return_window_days: int | None = None     # None = derive from `returnable` (30 if returnable else 0)
 
     @property
     def total(self) -> float:
         return round(self.price + self.fees + self.shipping, 2)
+
+    @property
+    def window_days(self) -> int:
+        if self.return_window_days is not None:
+            return self.return_window_days
+        return 30 if self.returnable else 0
 
 
 @dataclass
@@ -106,6 +114,7 @@ class Catalogue:
     products: dict[str, Product] = field(default_factory=dict)
     sellers: dict[str, Seller] = field(default_factory=dict)
     offers: dict[str, Offer] = field(default_factory=dict)
+    india: bool = False   # set by arena.india.annotate(); exposes cod / return-window fields to agents
 
     def offers_in(self, category: str) -> list[Offer]:
         return [o for o in self.offers.values() if self.products[o.quoted.sku].category == category]

@@ -88,6 +88,8 @@ class IntentConstraints(BaseModel):
     deadline_days: int = Field(..., description="Must be delivered within N days.")
     must_have: list[SpecRequirement] = Field(default_factory=list)
     requires_refundability: bool = False
+    cod_required: bool = False            # India variant: cash on delivery must be available
+    min_return_window_days: int = 0       # India variant: minimum return window
     # Soft preferences: weights over (cost, delivery, rating, quality); sum to 1.
     weights: dict[str, float] = Field(
         default_factory=lambda: {"cost": 0.4, "delivery": 0.2, "rating": 0.2, "quality": 0.2}
@@ -114,6 +116,8 @@ class CartLine(BaseModel):
     sku: str
     delivery_days: int
     returnable: bool
+    cod: bool = True
+    return_window_days: int | None = None
 
 
 class CartContents(BaseModel):

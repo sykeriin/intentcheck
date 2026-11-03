@@ -47,12 +47,18 @@ class Market:
     category: str
     seed: int
     listings: dict[str, Listing] = field(default_factory=dict)
+    paraphrase: object | None = None   # arena.paraphrase.ParaphraseCache; None = templated text as generated
 
     def __post_init__(self):
         rng = random.Random(self.seed)
         offers = [self.cat.offers[o] for o in self.offer_ids]
         for o in offers:
             self.listings[o.offer_id] = make_listing(o, self.cat, offers, rng)
+        if self.paraphrase is not None:
+            for li in self.listings.values():
+                new = self.paraphrase.lookup(li.description)
+                if new:
+                    li.description = new
 
     @property
     def offers(self) -> list[Offer]:
@@ -83,7 +89,8 @@ def _cart_from_terms(offer: Offer, t: Terms, product: Product, seller_name: str,
                                        details=details),
         cart_expiry=(now + timedelta(minutes=15)).isoformat(), merchant_name=seller_name,
         x_line=CartLine(offer_id=offer.offer_id, seller_id=offer.seller_id, sku=t.sku,
-                        delivery_days=t.delivery_days, returnable=t.returnable),
+                        delivery_days=t.delivery_days, returnable=t.returnable, cod=t.cod,
+                        return_window_days=t.window_days),
     )
     return CartMandate(contents=contents)
 
@@ -130,6 +137,8 @@ class MarketSession:
         payload = {"offer_id": offer_id, "seller_id": o.seller_id, "sku": q.sku, "price": q.price,
                    "fees": q.fees, "shipping": q.shipping, "total": q.total,
                    "delivery_days": q.delivery_days, "returnable": q.returnable}
+        if self.m.cat.india:
+            payload.update(cod=q.cod, return_window_days=q.window_days)
         token = self.m.keyring.keys[o.seller_id].sign(payload)
         self.sim_network_ms += 150
         self.log.append(ProvenanceItem("quote", "trusted", o.seller_id, offer_id))

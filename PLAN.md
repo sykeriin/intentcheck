@@ -380,3 +380,15 @@ Adaptive sellers (prompt-optimise the listing against a fixed buyer over N round
 1. Replace `PLAN.md` in the repo with this plan.
 2. Steps 1–6 of §9.2 (all offline, no keys needed), with commits per step.
 3. Stop and report scripted-baseline numbers and the demo output before starting any LLM work.
+
+
+## 18. Deviations from this plan (as built, 3 Nov 2026)
+| Planned | As built | Why |
+|---|---|---|
+| Quick-commerce item substitution in the India variant | **Not built.** India variant = COD availability + return window, with matching seller mutations | Time; COD / return-window already give a concrete Reserve Pay story |
+| Real x402 testnet demo | Local simulation of the x402 v2 message flow (`x402.py`); no chain, fiat-style asset `INR`, placeholder network | No funded testnet wallet; documented in the module header |
+| RS256 JWT merchant signatures | Ed25519 (EdDSA); export re-signs over AP2-stripped contents | Same property, fewer dependencies |
+| AP2 SDK round-trip | Export + hand-transcribed field manifest; upstream code not imported | Upstream is not on PyPI and drags in ADK/Gemini; downloaded code is untrusted |
+| CaMeL-style planner | Typed-fields-only buyer (`camel:<provider>`): seller free text never reaches the planner | A full capability-interpreter CaMeL is out of scope; named "CaMeL-inspired" everywhere |
+| LLM paraphrase of listings | Cache format, validator (strict/free) and `dia paraphrase` built; cache not generated | Needs a live model |
+| Dev split mix for the LLM test | `llm-test` split reshaped (70% precise, 30% clean) | 300 scenarios on the dev mix had 21 clean precise cases |

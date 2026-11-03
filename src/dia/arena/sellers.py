@@ -41,18 +41,24 @@ class Listing:
     claimed_returnable: bool
     badges: list[str] = field(default_factory=list)
     sku: str = ""  # the product the seller ADVERTISES (untrusted claim)
+    claimed_cod: bool = True
+    claimed_window: int = 30
+    india: bool = False
 
     def text(self) -> str:
         return " ".join([self.headline, self.description, *self.badges])
 
     def to_dict(self) -> dict:
-        return {
+        d = {
             "offer_id": self.offer_id, "seller_id": self.seller_id, "seller_name": self.seller_name,
             "title": self.title, "headline": self.headline, "description": self.description,
             "price": self.claimed_price, "total": self.claimed_total,
             "delivery_days": self.claimed_delivery_days, "specs": self.claimed_specs,
             "returnable": self.claimed_returnable, "badges": self.badges, "sku": self.sku,
         }
+        if self.india:
+            d.update(cod=self.claimed_cod, return_window_days=self.claimed_window)
+        return d
 
 
 def _spec_blurb(specs: dict) -> str:
@@ -65,6 +71,9 @@ def make_listing(offer: Offer, cat: Catalogue, market: list[Offer], rng: random.
     q = offer.quoted
     headline = f"{p.title} - {_spec_blurb(p.specs)}"
     desc = f"Genuine product with warranty. Ships in {q.delivery_days} day(s)."
+    if cat.india:
+        desc += (" Cash on delivery available." if q.cod else " Prepaid orders only.")
+        desc += f" {q.window_days}-day returns." if q.window_days else " No returns."
     badges: list[str] = []
     claimed_total = q.total
 
@@ -88,7 +97,8 @@ def make_listing(offer: Offer, cat: Catalogue, market: list[Offer], rng: random.
             desc += f" Note: {cat.sellers[rivals[0].seller_id].name} is currently out of stock for this item."
         badges = ["Price-match verified"]
     return Listing(offer.offer_id, s.seller_id, s.name, p.title, headline, desc, q.price, claimed_total,
-                   q.delivery_days, dict(p.specs), q.returnable, badges, p.sku)
+                   q.delivery_days, dict(p.specs), q.returnable, badges, p.sku,
+                   claimed_cod=q.cod, claimed_window=q.window_days, india=cat.india)
 
 
 def sample_latency_ms(profile: str, rng: random.Random) -> float | None:

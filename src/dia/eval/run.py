@@ -6,6 +6,8 @@ import json
 from pathlib import Path
 
 from ..arena.catalogue import build_catalogue
+from ..arena.india import annotate
+from ..arena.paraphrase import ParaphraseCache
 from ..arena.scenario import generate
 from ..buyers.llm import BudgetExceeded, LLMBuyer, TokenBudget
 from ..buyers.llm import DryRunProvider
@@ -19,6 +21,9 @@ from .judge import judge_result
 SPLITS = {
     "dev": dict(seed=1, n=1000, clean_frac=0.2, specificity_weights=(0.4, 0.4, 0.2)),
     "llm-test": dict(seed=2026, n=300, clean_frac=0.3, specificity_weights=(0.7, 0.2, 0.1)),
+    # India variant of the dev split: same markets and intents, plus COD / return-window requirements and the
+    # matching seller mutations (bait-and-switch drops COD at checkout; dark-pattern shortens the return window).
+    "india-dev": dict(seed=1, n=1000, clean_frac=0.2, specificity_weights=(0.4, 0.4, 0.2), india=True),
 }
 
 ADVERSARIAL = {"dark_pattern", "injection", "bait_and_switch", "colluding"}
@@ -35,31 +40,39 @@ def make_buyer(name: str, budget: TokenBudget | None = None, transcripts: str | 
     """
     if name in BUYERS:
         return BUYERS[name]()
-    if name.startswith("llm:"):
-        _, kind, *rest = name.split(":", 2)
-        arg = rest[0] if rest else ""
-        if kind == "dry":
-            provider = DryRunProvider()
-        elif kind == "anthropic":
-            provider = AnthropicProvider(arg)
-        elif kind == "openai":
-            provider = OpenAICompatProvider(arg)
-        elif kind == "replay":
-            provider = ReplayProvider(arg)
-        else:
-            raise KeyError(f"unknown LLM provider {kind!r}")
-        return LLMBuyer(provider, max_turns=max_turns, budget=budget, record_dir=transcripts)
+    if name.startswith(("llm:", "camel:")):
+        prefix, kind, *rest = name.split(":", 2)
+        provider = make_provider(kind, rest[0] if rest else "")
+        return LLMBuyer(provider, max_turns=max_turns, budget=budget, record_dir=transcripts,
+                        typed_only=(prefix == "camel"), prefix=prefix)
     raise KeyError(f"unknown buyer {name!r}; scripted: {sorted(BUYERS)}; LLM: llm:dry | llm:anthropic:<model> | "
-                   f"llm:openai:<model> | llm:replay:<dir>")
+                   f"llm:openai:<model> | llm:replay:<dir>; CaMeL-style (typed fields only): camel:<same specs>")
+
+
+def make_provider(kind: str, arg: str = ""):
+    if kind == "dry":
+        return DryRunProvider()
+    if kind == "anthropic":
+        return AnthropicProvider(arg)
+    if kind == "openai":
+        return OpenAICompatProvider(arg)
+    if kind == "replay":
+        return ReplayProvider(arg)
+    raise KeyError(f"unknown LLM provider {kind!r}")
 
 
 def run(buyer_names: list[str], configs: list[str], n: int, seed: int, catalogue_seed: int = 7,
         out: Path | None = None, token_budget: int | None = None, transcripts: str | None = None,
         max_turns: int = 12, repeat: int = 0, warnings: list[str] | None = None,
-        clean_frac: float = 0.2, specificity_weights: tuple[float, float, float] = (0.4, 0.4, 0.2)) -> list[dict]:
+        clean_frac: float = 0.2, specificity_weights: tuple[float, float, float] = (0.4, 0.4, 0.2),
+        india: bool = False, paraphrase: str | None = None) -> list[dict]:
     """`repeat` shifts the market's latency seeds (not model sampling) for the variance subset."""
     cat = build_catalogue(catalogue_seed)
-    scs = generate(cat, n=n, seed=seed, clean_frac=clean_frac, specificity_weights=specificity_weights)
+    if india:
+        annotate(cat)
+    cache = ParaphraseCache.load(paraphrase) if paraphrase else None
+    scs = generate(cat, n=n, seed=seed, clean_frac=clean_frac, specificity_weights=specificity_weights, india=india,
+                   paraphrase=cache)
     directory = scs[0].market.keyring.directory
     checkers = {c: IntentCheck(directory, c) for c in configs}
     budget = TokenBudget(token_budget) if token_budget else None

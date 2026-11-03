@@ -77,7 +77,8 @@ def _derive(session: MarketSession, cart: CartMandate) -> Features:
     line = cart.contents.x_line
     p = session.get_product(line.sku)
     return make_features(line.offer_id, line.seller_id, line.sku, cart.contents.total, line.delivery_days,
-                         session.seller_rating(line.seller_id), p.quality, line.returnable, p.specs)
+                         session.seller_rating(line.seller_id), p.quality, line.returnable, p.specs,
+                         cod=line.cod, window=line.return_window_days)
 
 
 def _from_claim(session: MarketSession, result: BuyerResult) -> Features:
@@ -193,7 +194,8 @@ class IntentCheck:
             q = session.get_quote(li.offer_id)  # only the identifier is taken from the untrusted listing
             p = session.get_product(q["sku"])
             out.append(make_features(q["offer_id"], q["seller_id"], q["sku"], q["total"], q["delivery_days"],
-                                     session.seller_rating(q["seller_id"]), p.quality, q["returnable"], p.specs))
+                                     session.seller_rating(q["seller_id"]), p.quality, q["returnable"], p.specs,
+                                     cod=q.get("cod", True), window=q.get("return_window_days")))
         return out
 
     def _find_dominator(self, session, c, mandate, chosen, view) -> Features | None:

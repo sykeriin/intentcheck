@@ -82,20 +82,27 @@ def user_prompt(mandate: IntentMandate, sees_constraints: bool) -> str:
     s = f"User request: {mandate.natural_language_description}"
     c = mandate.x_constraints
     if sees_constraints and c is not None:
-        s += "\n\nRequirements confirmed by the user:\n" + json.dumps({
-            "max_total_in_inr_including_fees_and_shipping": c.budget_total,
-            "deliver_within_days": c.deadline_days,
-            "must_have": [r.describe() for r in c.must_have],
-            "must_be_returnable": c.requires_refundability,
-            "preference_weights": c.weights}, indent=1)
+        req = {"max_total_in_inr_including_fees_and_shipping": c.budget_total,
+               "deliver_within_days": c.deadline_days,
+               "must_have": [r.describe() for r in c.must_have],
+               "must_be_returnable": c.requires_refundability,
+               "preference_weights": c.weights}
+        if c.cod_required:
+            req["cash_on_delivery_required"] = True
+        if c.min_return_window_days:
+            req["min_return_window_days"] = c.min_return_window_days
+        s += "\n\nRequirements confirmed by the user:\n" + json.dumps(req, indent=1)
     return s
 
 
 class ToolEnv:
     """Executes tool calls against a MarketSession. Only offers the agent has actually seen can be transacted."""
 
-    def __init__(self, session: MarketSession, search_timeout_ms: float = 1000):
-        self.s, self.timeout = session, search_timeout_ms
+    TYPED_KEYS = ("offer_id", "seller_id", "sku", "price", "total", "delivery_days", "specs", "returnable",
+                  "cod", "return_window_days")
+
+    def __init__(self, session: MarketSession, search_timeout_ms: float = 1000, typed_only: bool = False):
+        self.s, self.timeout, self.typed_only = session, search_timeout_ms, typed_only
         self.seen: dict[str, object] = {}
         self.quotes: dict[str, dict] = {}
         self.previews: dict[str, CartMandate] = {}
@@ -130,7 +137,13 @@ class ToolEnv:
             self.seen[li.offer_id] = li
         order = list(listings)
         self.s.rng.shuffle(order)  # remove any ordering artefact from how the market was assembled
-        return {"count": len(order), "results": [li.to_dict() for li in order]}
+        if self.typed_only:
+            # CaMeL-style: seller free text (title, headline, description, badges, names) never reaches the planner.
+            # Only typed fields (numbers, booleans, enumerated specs) cross the boundary.
+            rows = [{k: v for k, v in li.to_dict().items() if k in self.TYPED_KEYS} for li in order]
+        else:
+            rows = [li.to_dict() for li in order]
+        return {"count": len(order), "results": rows}
 
     def t_get_quote(self, offer_id: str) -> dict:
         self._offer(offer_id)
@@ -152,11 +165,14 @@ class ToolEnv:
         self._offer(offer_id)
         cart = self.previews[offer_id] = self.s.checkout(offer_id)
         c = cart.contents
-        return {"offer_id": offer_id, "merchant": c.merchant_name, "sku": c.x_line.sku,
-                "line_items": [{"label": i.label, "amount": i.amount.value}
-                               for i in c.payment_request.details.display_items],
-                "total": c.total, "currency": c.currency, "delivery_days": c.x_line.delivery_days,
-                "returnable": c.x_line.returnable, "merchant_signature_valid": True}
+        out = {"offer_id": offer_id, "merchant": c.merchant_name, "sku": c.x_line.sku,
+               "line_items": [{"label": i.label, "amount": i.amount.value}
+                              for i in c.payment_request.details.display_items],
+               "total": c.total, "currency": c.currency, "delivery_days": c.x_line.delivery_days,
+               "returnable": c.x_line.returnable, "merchant_signature_valid": True}
+        if self.s.m.cat.india:
+            out.update(cod=c.x_line.cod, return_window_days=c.x_line.return_window_days)
+        return out
 
     def t_buy(self, offer_id: str, expected_total: float, expected_delivery_days: int,
               expected_returnable: bool) -> dict:
@@ -176,9 +192,10 @@ class ToolEnv:
 class LLMBuyer:
     def __init__(self, provider: Provider, max_turns: int = 12, token_cap_per_scenario: int = 150_000,
                  budget: TokenBudget | None = None, record_dir: str | None = None,
-                 search_timeout_ms: float = 1000):
+                 search_timeout_ms: float = 1000, typed_only: bool = False, prefix: str = "llm"):
         self.provider = provider
-        self.name = f"llm:{provider.name}"
+        self.typed_only = typed_only
+        self.name = f"{prefix}:{provider.name}"
         self.max_turns, self.cap, self.budget = max_turns, token_cap_per_scenario, budget
         self.record_dir, self.timeout = record_dir, search_timeout_ms
 
@@ -186,7 +203,7 @@ class LLMBuyer:
         key = scenario_key(mandate, session)
         if hasattr(self.provider, "begin"):
             self.provider.begin(key)
-        env = ToolEnv(session, self.timeout)
+        env = ToolEnv(session, self.timeout, self.typed_only)
         messages: list[dict] = [{"role": "user", "content": user_prompt(mandate, sees_constraints)}]
         replies: list[ProviderReply] = []
         tin = tout = 0
@@ -217,7 +234,8 @@ class LLMBuyer:
                     break
         except ProviderError as e:
             status, note = "error", str(e)
-        ctx = session.untrusted_texts()
+        # typed-only: no free text was ever in the planner's context, so there is nothing to taint-check
+        ctx = [] if self.typed_only else session.untrusted_texts()
         out = self._result(env, ctx, tin, tout, last_text, status, note)
         if self.record_dir:
             save_transcript(f"{self.record_dir}/{self.name.replace(':', '_').replace('/', '_')}", key, replies,

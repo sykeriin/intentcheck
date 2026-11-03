@@ -1,0 +1,18 @@
+{
+  "_note": "Field names/requiredness transcribed by hand on 2026-11-03 from google-agentic-commerce/AP2 (Apache-2.0): code/sdk/python/ap2/models/mandate.py and payment_request.py (main branch). Used only to check that exported dicts use AP2's field names; upstream code is NOT imported or executed. Re-verify against upstream before relying on it: AP2 is evolving.",
+  "IntentMandate": {"required": ["natural_language_description", "intent_expiry"],
+                    "optional": ["user_cart_confirmation_required", "merchants", "skus", "requires_refundability"]},
+  "CartContents": {"required": ["id", "user_cart_confirmation_required", "payment_request", "cart_expiry", "merchant_name"],
+                   "optional": []},
+  "CartMandate": {"required": ["contents"], "optional": ["merchant_authorization"]},
+  "PaymentRequest": {"required": ["method_data", "details"], "optional": ["options", "shipping_address"]},
+  "PaymentDetailsInit": {"required": ["id", "display_items", "total"], "optional": ["shipping_options", "modifiers"]},
+  "PaymentItem": {"required": ["label", "amount"], "optional": ["pending", "refund_period"]},
+  "PaymentCurrencyAmount": {"required": ["currency", "value"], "optional": []},
+  "PaymentMethodData": {"required": ["supported_methods"], "optional": ["data"]},
+  "PaymentResponse": {"required": ["request_id", "method_name"],
+                      "optional": ["details", "shipping_address", "shipping_option", "payer_name", "payer_email", "payer_phone"]},
+  "PaymentMandateContents": {"required": ["payment_mandate_id", "payment_details_id", "payment_details_total",
+                                          "payment_response", "merchant_agent"], "optional": ["timestamp"]},
+  "PaymentMandate": {"required": ["payment_mandate_contents"], "optional": ["user_authorization"]}
+}

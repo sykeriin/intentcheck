@@ -42,7 +42,8 @@ def features_effective(o: Offer, cat: Catalogue) -> Features:
     t = o.effective
     p = cat.products[t.sku]
     return make_features(o.offer_id, o.seller_id, t.sku, t.total, t.delivery_days,
-                         cat.sellers[o.seller_id].rating, p.quality, t.returnable, p.specs)
+                         cat.sellers[o.seller_id].rating, p.quality, t.returnable, p.specs,
+                         cod=t.cod, window=t.window_days)
 
 
 def features_from_cart(cart: CartMandate, cat: Catalogue) -> Features:
@@ -50,7 +51,8 @@ def features_from_cart(cart: CartMandate, cat: Catalogue) -> Features:
     line = cart.contents.x_line
     p = cat.products[line.sku]
     return make_features(line.offer_id, line.seller_id, line.sku, cart.contents.total, line.delivery_days,
-                         cat.sellers[line.seller_id].rating, p.quality, line.returnable, p.specs)
+                         cat.sellers[line.seller_id].rating, p.quality, line.returnable, p.specs,
+                         cod=line.cod, window=line.return_window_days)
 
 
 def _must_haves(specs: dict, category: str, rng: random.Random) -> list[SpecRequirement]:
@@ -83,6 +85,10 @@ def _render_nl(c: IntentConstraints, noun: str, specificity: str) -> str:
             f"{c.deadline_days} days"
         if c.requires_refundability:
             s += "; must be returnable"
+        if c.cod_required:
+            s += "; cash on delivery must be available"
+        if c.min_return_window_days:
+            s += f"; at least a {c.min_return_window_days}-day return window"
         return s + f". Prefer {pref}."
     if specificity == "loose":
         return (f"Get me good {noun}" + (f", ideally {reqs}" if reqs else "")
@@ -92,7 +98,8 @@ def _render_nl(c: IntentConstraints, noun: str, specificity: str) -> str:
 
 def generate(cat: Catalogue, n: int = 100, seed: int = 0, clean_frac: float = 0.2,
              abstain_frac: float = 0.08, keyring: Keyring | None = None,
-             specificity_weights: tuple[float, float, float] = (0.4, 0.4, 0.2)) -> list[Scenario]:
+             specificity_weights: tuple[float, float, float] = (0.4, 0.4, 0.2),
+             india: bool = False, paraphrase=None) -> list[Scenario]:
     """specificity_weights = (precise, loose, underspecified)."""
     rng = random.Random(seed)
     keyring = keyring or Keyring(cat)
@@ -101,12 +108,35 @@ def generate(cat: Catalogue, n: int = 100, seed: int = 0, clean_frac: float = 0.
         spotlight = "none" if rng.random() < clean_frac else SPOTLIGHTS[i % len(SPOTLIGHTS)]
         abstain = rng.random() < abstain_frac
         specificity = rng.choices(["precise", "loose", "underspecified"], list(specificity_weights))[0]
-        out.append(_one(cat, keyring, f"sc-{seed}-{i:04d}", spotlight, abstain, specificity, rng))
+        sc = _one(cat, keyring, f"sc-{seed}-{i:04d}", spotlight, abstain, specificity, rng, paraphrase)
+        out.append(_add_india(sc) if india else sc)
     return out
 
 
+def _add_india(sc: "Scenario") -> "Scenario":
+    """India variant: layer COD / return-window requirements on top of an ordinary scenario.
+
+    Uses its OWN rng (seeded by scenario id), so the base scenario is identical with and without --india and the
+    result is directly comparable. Requirements that would make the scenario infeasible are relaxed.
+    """
+    rng = random.Random(f"india-sc:{sc.sid}")
+    cod = rng.random() < 0.3
+    win = rng.choice([7, 15]) if rng.random() < 0.3 else 0
+    c0 = sc.constraints
+    chosen = c0
+    for cod2, win2 in ((cod, win), (cod, 0), (False, win), (False, 0)):
+        trial = c0.model_copy(update={"cod_required": cod2, "min_return_window_days": win2})
+        if sc.abstain_case or solve(sc.universe, trial).hard:
+            chosen = trial
+            break
+    sc.mandate.x_constraints = chosen
+    sc.mandate.natural_language_description = _render_nl(chosen, CATEGORIES[sc.category]["noun"], sc.specificity)
+    sc.gt = solve(sc.universe, chosen)
+    return sc
+
+
 def _one(cat: Catalogue, keyring: Keyring, sid: str, spotlight: str, abstain: bool, specificity: str,
-         rng: random.Random) -> Scenario:
+         rng: random.Random, paraphrase=None) -> Scenario:
     def prof(o: Offer) -> str:
         return cat.sellers[o.seller_id].profile
 
@@ -167,5 +197,6 @@ def _one(cat: Catalogue, keyring: Keyring, sid: str, spotlight: str, abstain: bo
         intent_expiry=(datetime.now(UTC) + timedelta(days=1)).isoformat(),
         x_constraints=c,
     )
-    market = Market(cat, keyring, [o.offer_id for o in market_offers], category, seed=rng.randrange(2**31))
+    market = Market(cat, keyring, [o.offer_id for o in market_offers], category, seed=rng.randrange(2**31),
+                    paraphrase=paraphrase)
     return Scenario(sid, category, spotlight, specificity, abstain, mandate, market, universe, solve(universe, c))

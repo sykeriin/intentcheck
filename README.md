@@ -28,3 +28,19 @@ Design notes that matter when reading the numbers:
 
 LLM buyers (`llm:anthropic:<model>`, `llm:openai:<model>` for any OpenAI-compatible endpoint, `llm:replay:<dir>`,
 `llm:dry`) need `--token-budget` for any real model. The live providers have not been run against a real API yet.
+
+## More commands
+
+```bash
+python -m dia.cli run --split india-dev --buyers naive,cautious     # India variant: COD + return-window requirements
+python -m dia.cli run --buyers camel:dry,llm:dry --n 50              # typed-fields-only (CaMeL-inspired) vs plain LLM buyer
+python -m dia.cli paraphrase --provider openai:<model> --out cache.json   # one-off, needs a live model
+python -m dia.cli run --paraphrase cache.json ...                    # scenarios with paraphrased listing text
+python -m dia.cli x402 --profile bait_and_switch                     # x402 v2 flow with the IntentCheck guard (local simulation)
+```
+
+- `ap2/adapter.py` exports mandates in AP2's field names and checks them against a hand-transcribed manifest
+  (`ap2/ap2_manifest.json`); upstream AP2 code is not imported.
+- `x402.py` follows the x402 v2 message shapes but settles nothing on a chain: it is a simulation.
+- `tests/test_frozen.py` pins what PREREG.md freezes; new features are opt-in and must not change those hashes.
+- Docs: [docs/WRITEUP.md](docs/WRITEUP.md) (draft), [PREREG.md](PREREG.md), [PLAN.md](PLAN.md) (§18 lists deviations).
