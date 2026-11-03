@@ -171,6 +171,8 @@ python -m dia.cli confirm results/llm_test.jsonl
 
 *(none yet. Planned: A1, model identifiers, providers, run dates and token budgets, before the first `llm-test` run.)*
 
+Template and the order of operations: [NEXT_STEPS.md](NEXT_STEPS.md) section B.
+
 ## 12. Deviations log
 
 *(empty)*

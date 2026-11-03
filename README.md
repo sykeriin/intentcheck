@@ -7,7 +7,7 @@ No real LLM has been run, so **no result here is evidence about real agents**.
 
 ```bash
 pip install -e '.[dev]'
-python -m pytest -q                                   # 88 tests
+python -m pytest -q                                   # 127 tests
 python -m dia.cli run --n 1000 --seed 1               # scripted buyers x 7 verifier configs -> results/run.jsonl + report
 python -m dia.cli demo --profile bait_and_switch      # one end-to-end case, with and without IntentCheck
 python -m dia.cli run --split llm-test --buyers llm:dry --n 30   # exercise the LLM tool loop with no model or key
@@ -29,6 +29,9 @@ Design notes that matter when reading the numbers:
 LLM buyers (`llm:anthropic:<model>`, `llm:openai:<model>` for any OpenAI-compatible endpoint, `llm:replay:<dir>`,
 `llm:dry`) need `--token-budget` for any real model. The live providers have not been run against a real API yet.
 
+**What to do next:** see [NEXT_STEPS.md](NEXT_STEPS.md) (decisions only the owner can make, model-access steps in
+order, reading, backlog, pitfalls).
+
 ## More commands
 
 ```bash
@@ -44,3 +47,5 @@ python -m dia.cli x402 --profile bait_and_switch                     # x402 v2 f
 - `x402.py` follows the x402 v2 message shapes but settles nothing on a chain: it is a simulation.
 - `tests/test_frozen.py` pins what PREREG.md freezes; new features are opt-in and must not change those hashes.
 - Docs: [docs/WRITEUP.md](docs/WRITEUP.md) (draft), [PREREG.md](PREREG.md), [PLAN.md](PLAN.md) (§18 lists deviations).
+
+First live check of a model: `scripts/smoke_live.sh llm:openai:<model>` (5 dev scenarios, hard token budget).

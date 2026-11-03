@@ -3,7 +3,7 @@ name = "dia"
 version = "0.1.0"
 description = "MarketArena + IntentCheck: decision-integrity verification for agent payments (AP2/x402)"
 requires-python = ">=3.11"
-dependencies = ["pydantic>=2.6", "cryptography>=42"]
+dependencies = ["pydantic>=2.6", "cryptography>=42", "numpy>=1.26"]
 
 [project.optional-dependencies]
 llm = ["anthropic>=0.40"]
