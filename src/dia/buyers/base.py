@@ -30,6 +30,7 @@ class BuyerResult:
     context_untrusted: list[ProvenanceItem] = field(default_factory=list)
     tokens_in: int = 0
     tokens_out: int = 0
+    status: str = "ok"  # ok | abstained | incomplete | error  (the last two are non-purchases that are reported)
 
 
 class BuyerAgent(Protocol):

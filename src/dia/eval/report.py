@@ -29,6 +29,15 @@ def render(rows: list[dict]) -> str:
                    f"{rg[0]:.3f} [{rg[1]:.3f}, {rg[2]:.3f}] |" if rg[3] else
                    f"| {b} | {pct(M.violation_rate(rs))} | {pct(M.hard_rate(rs))} | n/a |")
 
+    out.append("\n## Completion and cost\n")
+    out.append("| buyer | purchased | abstained | incomplete | error | input tokens | output tokens |\n"
+               "|---|---|---|---|---|---|---|")
+    for b in buyers:
+        rs = M.select(rows, buyer=b)
+        st = lambda s: sum(1 for r in rs if r.get("status", "ok" if r.get("bought") else "abstained") == s)
+        out.append(f"| {b} | {st('ok')} | {st('abstained')} | {st('incomplete')} | {st('error')} | "
+                   f"{sum(r['tokens_in'] for r in rs):,} | {sum(r['tokens_out'] for r in rs):,} |")
+
     out.append("\n## Violation rate by seller profile in the market (spotlight)\n")
     out.append("| buyer | " + " | ".join(PROFILES) + " |\n|---|" + "---|" * len(PROFILES))
     for b in buyers:

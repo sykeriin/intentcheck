@@ -91,14 +91,16 @@ def _render_nl(c: IntentConstraints, noun: str, specificity: str) -> str:
 
 
 def generate(cat: Catalogue, n: int = 100, seed: int = 0, clean_frac: float = 0.2,
-             abstain_frac: float = 0.08, keyring: Keyring | None = None) -> list[Scenario]:
+             abstain_frac: float = 0.08, keyring: Keyring | None = None,
+             specificity_weights: tuple[float, float, float] = (0.4, 0.4, 0.2)) -> list[Scenario]:
+    """specificity_weights = (precise, loose, underspecified)."""
     rng = random.Random(seed)
     keyring = keyring or Keyring(cat)
     out = []
     for i in range(n):
         spotlight = "none" if rng.random() < clean_frac else SPOTLIGHTS[i % len(SPOTLIGHTS)]
         abstain = rng.random() < abstain_frac
-        specificity = rng.choices(["precise", "loose", "underspecified"], [0.4, 0.4, 0.2])[0]
+        specificity = rng.choices(["precise", "loose", "underspecified"], list(specificity_weights))[0]
         out.append(_one(cat, keyring, f"sc-{seed}-{i:04d}", spotlight, abstain, specificity, rng))
     return out
 

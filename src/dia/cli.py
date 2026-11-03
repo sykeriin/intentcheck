@@ -12,8 +12,16 @@ def _run(a) -> None:
     if a.resamples:
         metrics.set_resamples(a.resamples)
     out = Path(a.out)
-    rows = runner.run(a.buyers.split(","), a.configs.split(","), a.n, a.seed, out=out)
+    warnings: list[str] = []
+    sp = dict(runner.SPLITS[a.split]) if a.split else {}
+    n, seed = a.n or sp.pop("n", 1000), a.seed if a.seed is not None else sp.pop("seed", 1)
+    sp.pop("n", None), sp.pop("seed", None)
+    rows = runner.run(a.buyers.split(","), a.configs.split(","), n, seed, out=out, **sp,
+                      token_budget=a.token_budget, transcripts=a.transcripts, max_turns=a.max_turns,
+                      repeat=a.repeat, warnings=warnings)
     print(report.render(rows))
+    for w in warnings:
+        print(f"\nWARNING: {w}")
     print(f"\n[wrote {len(rows)} rows to {out}]")
 
 
@@ -21,6 +29,12 @@ def _report(a) -> None:
     if a.resamples:
         metrics.set_resamples(a.resamples)
     print(report.render(runner.load(Path(a.path))))
+
+
+def _confirm(a) -> None:
+    from .eval import confirm
+    rows = runner.load(Path(a.path))
+    print(confirm.render(confirm.evaluate(rows, resamples=a.resamples or confirm.B)))
 
 
 def _demo(a) -> None:
@@ -90,15 +104,26 @@ def main(argv=None) -> None:
     r.add_argument("--buyers", default="oracle,naive,cautious")
     r.add_argument("--configs", default="full,no_rederivation,no_counterfactual,no_taint,hard_only,limit_only,"
                                         "full_partial_view")
-    r.add_argument("--n", type=int, default=1000)
-    r.add_argument("--seed", type=int, default=1)
+    r.add_argument("--split", choices=sorted(runner.SPLITS), default=None,
+                   help="named scenario split (sets seed, n, clean fraction, intent mix); --n/--seed override")
+    r.add_argument("--n", type=int, default=None)
+    r.add_argument("--seed", type=int, default=None)
     r.add_argument("--out", default="results/run.jsonl")
     r.add_argument("--resamples", type=int, default=0)
+    r.add_argument("--token-budget", type=int, default=None,
+                   help="hard cap on total LLM tokens for the whole run (recommended for any real model)")
+    r.add_argument("--transcripts", default=None, help="record each LLM buyer's replies here (see llm:replay:<dir>)")
+    r.add_argument("--max-turns", type=int, default=12)
+    r.add_argument("--repeat", type=int, default=0, help="shift market latency seeds, for the variance subset")
     r.set_defaults(fn=_run)
     q = sub.add_parser("report")
     q.add_argument("path")
     q.add_argument("--resamples", type=int, default=0)
     q.set_defaults(fn=_report)
+    c = sub.add_parser("confirm", help="confirmatory analysis C1-C5 from PREREG.md")
+    c.add_argument("path")
+    c.add_argument("--resamples", type=int, default=0)
+    c.set_defaults(fn=_confirm)
     d = sub.add_parser("demo")
     d.add_argument("--profile", default="dark_pattern",
                    choices=["none", "dark_pattern", "injection", "bait_and_switch", "colluding", "flaky"])

@@ -70,3 +70,13 @@ def test_market_size_and_single_category(scs, cat):
     for s in scs:
         assert 2 <= len(s.market.offer_ids) <= 30 + 5
         assert {cat.products[cat.offers[o].quoted.sku].category for o in s.market.offer_ids} == {s.category}
+
+
+def test_scenarios_are_a_prefix_property(cat):
+    """generate(n=100) must equal the first 100 of generate(n=300): the PREREG repeat subset relies on it."""
+    from dia.eval.run import SPLITS
+    sp = dict(SPLITS["llm-test"]); sp.pop("n"); seed = sp.pop("seed")
+    a, b = generate(cat, n=40, seed=seed, **sp), generate(cat, n=80, seed=seed, **sp)
+    key = lambda s: (s.sid, s.spotlight, s.specificity, s.abstain_case, s.mandate.natural_language_description,
+                     tuple(s.market.offer_ids))
+    assert [key(s) for s in a] == [key(s) for s in b[:40]]
