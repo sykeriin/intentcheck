@@ -72,7 +72,7 @@ subset. Check current prices and free tiers yourself; I could not verify them. E
 
 ## C. Reading and verification (do not skip; this is what makes the claims safe)
 
-- **Three brief citations were never opened:** arXiv 2604.15367, 2604.03733, 2605.30998. Read them and check that
+- **Three brief citations were checked on 5 Nov (abstracts, plus full text for 2604.15367 and AIP-Bench; see WRITEUP §3). Still worth a full read of 2604.03733 and 2605.30998:** arXiv 2604.15367, 2604.03733, 2605.30998. Read them and check that
   what [docs/WRITEUP.md](docs/WRITEUP.md) says about each is true.
 - **AIP-Bench (2607.21824):** I only read the abstract. Read the paper and check the claim that it does not measure
   decision quality or intent binding. If it does, the novelty statement changes.

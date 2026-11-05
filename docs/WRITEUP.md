@@ -32,12 +32,14 @@ treats model-dependent semantic attacks separately; this work targets that seman
 | Beyond the Mandate (arXiv 2608.23858) | Security analysis of AP2 v0.2; valid signatures do not ensure intent | Problem statement |
 | Whispers of Wealth (arXiv 2601.22569) | Prompt-injection red-teaming of AP2 | Attack demonstrations; no measurement arena |
 | AP2 mandate lifecycle (arXiv 2602.06345) | Runtime enforcement gaps | Protocol level |
-| AIP-Bench (arXiv 2607.21824) | Deterministic benchmark of structural protocol attacks | Complementary layer |
-| x402 security audit (arXiv 2605.30998) | Settlement invariants | Why settlement is out of scope |
-| SoK agentic commerce (2604.15367), SoK blockchain A2A payments (2604.03733) | Taxonomies; name intent binding as open | Threat-model vocabulary |
+| AIP-Bench (arXiv 2607.21824) | Deterministic benchmark of structural protocol attacks (33 vulnerabilities, 3 platforms) plus a small 1,440-trial LLM study of one marketplace prompt-injection class | Complementary layer; it measures neither decision quality nor intent binding |
+| Free-Riding the Agentic Web (arXiv 2605.30998) | Security analysis of x402 around five settlement invariants; four flaw classes | Why settlement is out of scope |
+| SoK: Security of Autonomous LLM Agents in Agentic Commerce (2604.15367) | Five-dimension threat framework, 12 attack vectors; names "end-to-end intent binding" as the mitigation for post-reasoning execution corruption | Threat-model vocabulary |
+| SoK: Blockchain Agent-to-Agent Payments (2604.03733) | Four-stage lifecycle; lists "weak intent binding" among key open challenges | Threat-model vocabulary |
 
-Papers 2604.15367, 2605.30998 and 2604.03733 were taken from the project brief and have **not yet been read**;
-verify before citing.
+Citations checked against the arXiv abstracts and, for 2607.21824 and 2604.15367, the full text (5 Nov 2026).
+2604.03733 and 2605.30998 were checked against the abstracts only. AIP-Bench explicitly defers "semantic intent
+verification" to future work and says semantic attacks are model-dependent, which supports the positioning above.
 
 ## 4. Design
 
