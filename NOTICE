@@ -1,0 +1,7 @@
+IntentCheck
+Copyright 2026 sykeriin
+
+The data models in src/dia/ap2/ mirror field names from the Agent Payments
+Protocol (AP2), https://github.com/google-agentic-commerce/AP2, which is
+licensed under Apache-2.0. This project is not affiliated with or endorsed by
+the AP2 authors.
